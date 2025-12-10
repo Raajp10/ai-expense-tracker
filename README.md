@@ -111,6 +111,84 @@ Ai-Expese-Tracker/
 - Simple anomaly detection (high-spend days and categories)
 - Interactive dashboard built with Next.js (run using pnpm)
 
+### ⚠️ Important: LLM / RAG Requirements
+
+This project supports two modes of operation:
+
+1. **LLM-powered RAG mode** (recommended)
+2. **Rule-based fallback mode** (automatic backup)
+
+To use the full RAG pipeline with natural-language explanations, you must install
+and run **Ollama** locally:
+
+- Download Ollama: https://ollama.com/download
+- Pull at least one model: Example in these project test with ollama pull llama3.2
+
+## 🔄 Using a Different AI Model (Replacing Ollama)
+
+The backend is designed so you can easily switch from **Ollama** to **any other LLM provider**, such as:
+
+- OpenAI (GPT-4, GPT-4o, GPT-3.5)
+- Groq (Llama-3, Mixtral Ultra-Fast)
+- DeepSeek-R1 / DeepSeek-Chat
+- HuggingFace Inference API
+- Local models via LM Studio
+- Custom inference servers (vLLM, TGI, llama.cpp, etc.)
+
+Only **one file** must be modified:
+
+### 🔧 Modify This Function to Use Any AI Provider
+
+The function responsible for LLM communication is:
+
+```python
+def call_ollama_chat(prompt: str, model: str = "llama3.2") -> str:
+```
+
+### Replace Ollama with OpenAI
+```python
+def call_ollama_chat(prompt: str, model: str = "gpt-4o"):
+    from openai import OpenAI
+    client = OpenAI(api_key="YOUR_API_KEY")
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content.strip()
+```
+### Replace with Groq (Llama-3 Turbo / Mixtral)
+```python
+def call_ollama_chat(prompt: str, model: str = "llama3-70b-8192"):
+    import requests, os
+    headers = {"Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}"}
+
+    resp = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}]
+        }
+    )
+    data = resp.json()
+    return data["choices"][0]["message"]["content"].strip()
+```
+
+### Replace with HuggingFace Inference API
+```python
+def call_ollama_chat(prompt: str, model: str = "meta-llama/Meta-Llama-3-8B"):
+    import requests, os
+    HF_KEY = os.getenv("HF_TOKEN")
+
+    response = requests.post(
+        f"https://api-inference.huggingface.co/models/{model}",
+        headers={"Authorization": f"Bearer {HF_KEY}"},
+        json={"inputs": prompt},
+    )
+    text = response.json()[0]["generated_text"]
+    return text.strip()
+```
 ## 3. Prerequisites and Technologies Used
 
 ### Backend
@@ -129,7 +207,7 @@ Ai-Expese-Tracker/
 - pnpm
 - Recharts / D3.js
 
-### Optional (for LLM / RAG Features)
+### for LLM / RAG Features
 
 To enable natural-language explanations using a local LLM, install **Ollama** on your system.
 
@@ -149,7 +227,7 @@ All backend commands are run from the Backend/ directory.
 ### 4.1 Virtual Environment
 
 ```bash
-cd Backend/backend
+cd ai-expense-tracker/Backend/backend
 python3.11 -m venv .venv
 source .venv/bin/activate
 ```
@@ -160,18 +238,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4.3 Environment Variables
-
-Create a .env file:
-
-```env
-DATABASE_URL=sqlite:///./ai_expense_tracker.db
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2
-RAG_ENABLED=true
-```
-
-### 4.4 Run Backend
+### 4.3 Run Backend
 
 ```bash
 uvicorn main:app --reload
@@ -182,12 +249,6 @@ uvicorn main:app --reload
 ```bash
 cd Frontend
 pnpm install
-```
-
-Create .env.local:
-
-```env
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 ```
 
 Run frontend:
