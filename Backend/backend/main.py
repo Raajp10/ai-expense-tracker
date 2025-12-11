@@ -127,16 +127,26 @@ def create_transaction(tx_in: schemas.TransactionCreate, db: Session = Depends(g
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Look up category by name for this user; create it if missing
     category = db.query(models.Category).filter(
-        models.Category.id == tx_in.category_id,
+        models.Category.name == tx_in.category_name,
         models.Category.user_id == tx_in.user_id,
     ).first()
     if not category:
-        raise HTTPException(status_code=404, detail="Category not found for this user")
+        category_type = "income" if tx_in.amount > 0 else "expense"
+        category = models.Category(
+            user_id=tx_in.user_id,
+            name=tx_in.category_name,
+            type=category_type,
+            created_at=now_str(),
+        )
+        db.add(category)
+        db.commit()
+        db.refresh(category)
 
     tx = models.Transaction(
         user_id=tx_in.user_id,
-        category_id=tx_in.category_id,
+        category_id=category.id,
         amount=tx_in.amount,
         transaction_date=tx_in.transaction_date,
         description=tx_in.description,
@@ -169,16 +179,17 @@ def create_budget(b_in: schemas.BudgetCreate, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Look up category by name for this user
     category = db.query(models.Category).filter(
-        models.Category.id == b_in.category_id,
+        models.Category.name == b_in.category_name,
         models.Category.user_id == b_in.user_id,
     ).first()
     if not category:
-        raise HTTPException(status_code=404, detail="Category not found for this user")
+        raise HTTPException(status_code=404, detail=f"Category '{b_in.category_name}' not found for this user")
 
     budget = models.Budget(
         user_id=b_in.user_id,
-        category_id=b_in.category_id,
+        category_id=category.id,
         month=b_in.month,
         amount=b_in.amount,
         created_at=now_str(),
@@ -418,7 +429,8 @@ def get_monthly_summary_compat(
         .scalar()
     )
 
-    net_savings = float(total_income) - float(total_expense)
+    # Net savings = income minus absolute expense (expense totals are stored negative)
+    net_savings = float(total_income) - abs(float(total_expense))
 
     return {
         "user_id": user_id,
@@ -491,7 +503,8 @@ def api_analytics_summary(
         month=month,
         total_income=float(total_income),
         total_expense=float(total_expense),
-        net_savings=float(total_income) - float(total_expense),
+        # Net savings = income minus absolute expense (expense totals are stored negative)
+        net_savings=float(total_income) - abs(float(total_expense)),
     )
 
 

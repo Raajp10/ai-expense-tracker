@@ -50,8 +50,12 @@ class TransactionBase(BaseModel):
     description: Optional[str] = None
 
 
-class TransactionCreate(TransactionBase):
-    pass
+class TransactionCreate(BaseModel):
+    user_id: int
+    category_name: str  # Accept category_name instead of category_id
+    amount: float
+    transaction_date: str  # 'YYYY-MM-DD'
+    description: Optional[str] = None
 
 
 class TransactionOut(TransactionBase):
@@ -70,8 +74,11 @@ class BudgetBase(BaseModel):
     amount: float
 
 
-class BudgetCreate(BudgetBase):
-    pass
+class BudgetCreate(BaseModel):
+    user_id: int
+    category_name: str  # Accept category_name instead of category_id
+    month: str  # 'YYYY-MM'
+    amount: float
 
 
 class BudgetOut(BudgetBase):

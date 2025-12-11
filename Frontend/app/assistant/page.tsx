@@ -15,20 +15,22 @@ interface Message {
   id: string
   role: "user" | "assistant"
   content: string
-  timestamp: Date
+  // store timestamps as ISO strings to avoid hydration mismatches across server/client
+  timestamp: string
 }
 
 export default function AssistantPage() {
   const { userId, month } = useApp()
   const { toast } = useToast()
 
+  const [isHydrated, setIsHydrated] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
       role: "assistant",
       content:
         "Hello! I'm Rcube, your AI finance assistant. I read from your stored transactions, budgets, anomalies, and spending segments to answer your questions. Ask me anything about your spending patterns, budget comparisons, or unusual transactions!",
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     },
   ])
   const [input, setInput] = useState("")
@@ -43,6 +45,11 @@ export default function AssistantPage() {
     scrollToBottom()
   }, [messages])
 
+  useEffect(() => {
+    // Ensure time formatting only happens on the client to prevent hydration drift
+    setIsHydrated(true)
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || loading) return
@@ -51,7 +58,7 @@ export default function AssistantPage() {
       id: Date.now().toString(),
       role: "user",
       content: input.trim(),
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -65,7 +72,7 @@ export default function AssistantPage() {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: response.answer,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       }
 
       setMessages((prev) => [...prev, assistantMessage])
@@ -80,7 +87,7 @@ export default function AssistantPage() {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: "I apologize, but I encountered an error processing your request. Please try again.",
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       }
 
       setMessages((prev) => [...prev, errorMessage])
@@ -124,7 +131,9 @@ export default function AssistantPage() {
                 >
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                   <p className={`text-xs mt-3 ${message.role === "user" ? "opacity-70" : "text-muted-foreground"}`}>
-                    {message.timestamp.toLocaleTimeString()}
+                    {isHydrated
+                      ? new Date(message.timestamp).toLocaleTimeString()
+                      : ""}
                   </p>
                 </div>
                 {message.role === "user" && (

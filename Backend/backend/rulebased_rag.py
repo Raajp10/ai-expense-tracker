@@ -57,6 +57,9 @@ def build_monthly_summary(
         .scalar()
     )
 
+    # ---------- net savings (income minus absolute expenses) ----------
+    net_savings = float(total_income) - abs(float(total_spent))
+
     # ---------- top 3 categories ----------
     top_categories = (
         db.query(
@@ -123,8 +126,9 @@ def build_monthly_summary(
     # ---------- build natural language summary ----------
     summary_lines = [
         f"Summary for {month}:",
-        f"- Total expenses: {total_spent:.2f}",
-        f"- Total income: {total_income:.2f}",
+        f"- Total expenses: {abs(float(total_spent)):.2f}",
+        f"- Total income: {float(total_income):.2f}",
+        f"- Net savings: {net_savings:.2f}",
         f"- Top spending categories: {top_cat_text}",
         f"- Budget status: {overspent_text}",
     ]
@@ -209,12 +213,21 @@ def answer_question(db: Session, user_id: int, question: str) -> Tuple[str, str]
         return summary.summary_text or "No summary text available.", f"intent=summary; {month_note}"
 
     # --- intent: total spent ---
-    if "how much" in q_lower and "spend" in q_lower:
+    if ("how much" in q_lower and "spend" in q_lower) or "expense" in q_lower:
         ans = (
-            f"In {month}, you spent a total of {summary.total_spent:.2f} "
+            f"In {month}, you spent a total of {abs(summary.total_spent):.2f} "
             f"and your income was {summary.total_income:.2f}."
         )
         return ans, f"intent=total_spent; {month_note}"
+
+    # --- intent: savings ---
+    if "saving" in q_lower or "savings" in q_lower or "net" in q_lower:
+        net_savings = summary.total_income - abs(summary.total_spent)
+        ans = (
+            f"In {month}, your net savings (income minus expenses) are {net_savings:.2f}. "
+            f"Income: {summary.total_income:.2f}, Expenses: {abs(summary.total_spent):.2f}."
+        )
+        return ans, f"intent=net_savings; {month_note}"
 
     # --- intent: budget / over budget ---
     if "budget" in q_lower or "over budget" in q_lower:

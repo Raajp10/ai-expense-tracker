@@ -1154,6 +1154,9 @@ def build_monthly_summary(db: Session, user_id: int, month: str) -> models.Month
         .scalar()
     )
 
+    # Net savings (income minus absolute expenses)
+    net_savings = float(total_income) - abs(float(total_spent))
+
     top_categories = (
         db.query(
             models.Category.name,
@@ -1212,8 +1215,9 @@ def build_monthly_summary(db: Session, user_id: int, month: str) -> models.Month
 
     summary_lines = [
         f"Summary for {month}:",
-        f"- Total expenses: {total_spent:.2f}",
-        f"- Total income: {total_income:.2f}",
+        f"- Total expenses: {abs(float(total_spent)):.2f}",
+        f"- Total income: {float(total_income):.2f}",
+        f"- Net savings: {net_savings:.2f}",
         f"- Top spending categories: {top_cat_text}",
         f"- Budget status: {overspent_text}",
     ]
@@ -1382,10 +1386,12 @@ def retrieve_context(db: Session, user_id: int, question: str) -> Tuple[Optional
         .all()
     )
 
+    net_savings = summary.total_income - abs(summary.total_spent)
     numeric_summary = (
         f"User {user_id}, month {month}: "
-        f"total_spent={summary.total_spent:.2f}, "
-        f"total_income={summary.total_income:.2f}"
+        f"total_spent={abs(summary.total_spent):.2f}, "
+        f"total_income={summary.total_income:.2f}, "
+        f"net_savings={net_savings:.2f}"
     )
 
     ctx = RAGContext(
@@ -1531,8 +1537,20 @@ def generate_answer_rule_based(question: str, ctx: RAGContext) -> str:
         return f"In {ctx.month}, you spent a total of {spent_part}."
 
     if "income" in q:
-        income_part = ctx.numeric_summary.split("total_income=")[1].split()[0]
+        income_part = ctx.numeric_summary.split("total_income=")[1].split(",")[0]
         return f"In {ctx.month}, your recorded income was {income_part}."
+
+    if "saving" in q or "savings" in q or "net" in q:
+        # numeric_summary contains net_savings=...
+        try:
+            net_part = ctx.numeric_summary.split("net_savings=")[1].split()[0]
+        except Exception:
+            net_part = "N/A"
+        return (
+            f"In {ctx.month}, your net savings (income minus expenses) were {net_part}. "
+            f"Income: {ctx.numeric_summary.split('total_income=')[1].split(',')[0]}, "
+            f"Expenses: {ctx.numeric_summary.split('total_spent=')[1].split(',')[0]}."
+        )
 
     if "top" in q and "category" in q:
         if not ctx.top_categories:

@@ -11,25 +11,15 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "AI Expense Tracker - Smart Financial Management",
-  description: "AI-powered expense tracking with RAG assistant, anomaly detection, and spending insights",
-  generator: "raaj.app",
+  title: "AI Expense Tracker",
+  description: "AI-powered expense tracking with assistant, anomalies, and spending insights",
   icons: {
     icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
       {
         url: "/icon.svg",
         type: "image/svg+xml",
       },
     ],
-    apple: "/apple-icon.png",
   },
 }
 
@@ -40,7 +30,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="font-sans antialiased">
+      {/* suppressHydrationWarning on body to ignore client-only attrs injected by extensions (e.g., cz-shortcut-listen) */}
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <AppProvider>
           <ClientLayout>{children}</ClientLayout>
           <Toaster />

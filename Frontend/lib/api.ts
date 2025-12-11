@@ -43,7 +43,20 @@ export const api = {
     })
     if (!res.ok) {
       const error = await res.json().catch(() => ({ detail: "Failed to create transaction" }))
-      throw new Error(error.detail || "Failed to create transaction")
+      // Handle FastAPI error format: detail can be a string or an array of error objects
+      let errorMessage = "Failed to create transaction"
+      if (error.detail) {
+        if (typeof error.detail === "string") {
+          errorMessage = error.detail
+        } else if (Array.isArray(error.detail)) {
+          // FastAPI validation errors are arrays
+          errorMessage = error.detail.map((err: any) => `${err.loc?.join(".")}: ${err.msg || err.type}`).join(", ")
+        } else {
+          // If detail is an object, stringify it properly
+          errorMessage = JSON.stringify(error.detail)
+        }
+      }
+      throw new Error(errorMessage)
     }
     return res.json()
   },
@@ -69,7 +82,20 @@ export const api = {
     })
     if (!res.ok) {
       const error = await res.json().catch(() => ({ detail: "Failed to create budget" }))
-      throw new Error(error.detail || "Failed to create budget")
+      // Handle FastAPI error format: detail can be a string or an array of error objects
+      let errorMessage = "Failed to create budget"
+      if (error.detail) {
+        if (typeof error.detail === "string") {
+          errorMessage = error.detail
+        } else if (Array.isArray(error.detail)) {
+          // FastAPI validation errors are arrays
+          errorMessage = error.detail.map((err: any) => `${err.loc?.join(".")}: ${err.msg || err.type}`).join(", ")
+        } else {
+          // If detail is an object, stringify it properly
+          errorMessage = JSON.stringify(error.detail)
+        }
+      }
+      throw new Error(errorMessage)
     }
     return res.json()
   },
